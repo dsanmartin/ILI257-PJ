@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
-/* #include "threadpool.h" */
+#include "threadpool.h"
+/* #include <semaphore.h> */
 
 #define N_MIN 0
 #define N_MAX 1
@@ -32,6 +33,8 @@ void seqfillMatrix(int rows, int cols, double *M);
 
 void seqMatMult(int m, int o, int n, double *A, double *B, double *C);
 
+void blockMult(Matrix *A, Matrix *B, Matrix *C, int start, int end);
+
 void printMatrix(Matrix *M);
 
 double elementMult(Matrix *A, Matrix *B, int row, int col);
@@ -39,6 +42,9 @@ double elementMult(Matrix *A, Matrix *B, int row, int col);
 void fillMatrix(Matrix *M, int start, int end);
 
 void *matMult(void *param);
+
+void *_th_fillMatrix(void **args);
+void *_th_blockMult(void **args);
 
 
 int main(int argc, char *argv[])
@@ -51,11 +57,15 @@ int main(int argc, char *argv[])
 	//Number of threads
 	unsigned int n_threads;
 
+	int a, b;
+
 	//Assign values
 	m = atoi(argv[1]);
 	o = atoi(argv[2]);
 	n = atoi(argv[3]);
 	n_threads = atoi(argv[4]);
+
+	void *th_arguments[5];
 
 	// Threads 
 	//pthread_t *thread_r1; // Thread for random matrix 1
@@ -76,6 +86,14 @@ int main(int argc, char *argv[])
 	unsigned int blockB = B->size % n_threads == 0? B->size / n_threads : B->size / n_threads + 1;
 
 
+	poolThread *P;
+
+	// Creacion Pool
+	if(n_threads > 1) {
+		P = createPool(n_threads);
+	}
+
+
 	if(n_threads == 1) /* Sequential */
 	{
 
@@ -93,10 +111,21 @@ int main(int argc, char *argv[])
 		for(int i=0; i < n_threads; i++) 
 		{
 
-			fillMatrix(A, i*block, (i+1)*block);
-			fillMatrix(B, i*block, (i+1)*block);
+			a = i*block;
+			b = (i+1)*block;
+
+			//fillMatrix(A, i*block, (i+1)*block);
+			//fillMatrix(B, i*block, (i+1)*block);
+
+			th_arguments[0] = (void *)A;
+			//th_arguments[1] = (void *)B;
+			//th_arguments[2] = (void *)C;
+			th_arguments[1] = (void *)&a;
+			th_arguments[2] = (void *)&b;
 
 			// TODO paralelizar
+			poolSendJob(P, *_th_fillMatrix, th_arguments);
+
 
 		}
 	}
@@ -136,6 +165,21 @@ double elementMult(Matrix *A, Matrix *B, int row, int col)
 		c += A->values[A->cols*row + i] * B->values[B->cols*i + col];
 
 	return c;
+}
+
+void blockMult(Matrix *A, Matrix *B, Matrix *C, int start, int end)
+{
+	for( ;(start < end) && (start < C->size); start++)
+		C->values[start] = elementMult(A, B, start/A->rows, start%A->rows);
+}
+
+void *_th_fillMatrix(void **args) {
+	fillMatrix((Matrix *) args[0], (int) args[1], (int) args[2]);
+}
+
+void *_th_blockMult(void **args)
+{
+	blockMult((Matrix *) args[0], (Matrix *) args[1], (Matrix *) args[2], (int) args[3], (int) args[4]);
 }
 
 void printMatrix(Matrix *M)
