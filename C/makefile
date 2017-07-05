@@ -1,5 +1,5 @@
 
-FLAGS = -lpthread
+FLAGS = -pthread
 OBJS  = queue.c threadpool.c main.c
 HEAD  = queue.h threadpool.h
 NAME  = main

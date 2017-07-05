@@ -1,7 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include "threadpool.h"
-/* #include <semaphore.h> */
 
 #define N_MIN 0
 #define N_MAX 1
@@ -67,24 +66,15 @@ int main(int argc, char *argv[])
 
 	void *th_arguments[5];
 
-	// Threads 
-	//pthread_t *thread_r1; // Thread for random matrix 1
-	//pthread_t *thread_r2; // Thread for random matrix 2
-	//pthread_t *thread_m;  // Thread for matrix multiplication
-
-	/*
-	double *A = (double *) malloc(sizeof(double)*m*o); // First random matrix
-	double *B = (double *) malloc(sizeof(double)*o*n); // Second random matrix
-	double *C = (double *) malloc(sizeof(double)*m*n); // Result matrix
-	*/
-
 	Matrix *A = createMatrix(m, o);
 	Matrix *B = createMatrix(o, n);
 	Matrix *C = createMatrix(m ,n);
 
+	
+	/*
 	unsigned int blockA = A->size % n_threads == 0? A->size / n_threads : A->size / n_threads + 1;
 	unsigned int blockB = B->size % n_threads == 0? B->size / n_threads : B->size / n_threads + 1;
-
+	*/
 
 	poolThread *P;
 
@@ -106,24 +96,31 @@ int main(int argc, char *argv[])
 	} 
 	else /* Parallel */
 	{
-		int block = (C->size%n_threads == 0)? C->size/n_threads : C->size/n_threads + 1;
+		unsigned int blockA = A->size%n_threads == 0? A->size/n_threads : A->size/n_threads + 1;
+		unsigned int blockB = B->size%n_threads == 0? B->size/n_threads : B->size/n_threads + 1;
+		unsigned int blockC = C->size%n_threads == 0? C->size/n_threads : C->size/n_threads + 1;
 
 		for(int i=0; i < n_threads; i++) 
 		{
-
-			a = i*block;
-			b = (i+1)*block;
-
-			//fillMatrix(A, i*block, (i+1)*block);
-			//fillMatrix(B, i*block, (i+1)*block);
+			
+			// Fill matrix A
+			a = i*blockA;
+			b = (i+1)*blockA;
 
 			th_arguments[0] = (void *)A;
-			//th_arguments[1] = (void *)B;
-			//th_arguments[2] = (void *)C;
+			th_arguments[1] = (void *)&a;
+			th_arguments[2] = (void *)&b;
+			
+			poolSendJob(P, *_th_fillMatrix, th_arguments);
+
+			// Fill matrix B
+			a = i*blockB;
+			b = (i+1)*blockB;
+
+			th_arguments[0] = (void *)B;
 			th_arguments[1] = (void *)&a;
 			th_arguments[2] = (void *)&b;
 
-			// TODO paralelizar
 			poolSendJob(P, *_th_fillMatrix, th_arguments);
 
 
@@ -132,14 +129,12 @@ int main(int argc, char *argv[])
 
 
 	// Show result
-	/*
 	printf("Matrix A:\n");
 	printMatrix(A);
 	printf("\nMatrix B:\n");
 	printMatrix(B);
 	printf("\nMatrix C:\n");
 	printMatrix(C);
-	*/
 
 	// Liberar memoria 
 	delMatrix(A);
@@ -152,6 +147,8 @@ int main(int argc, char *argv[])
 
 void fillMatrix(Matrix *M, int start, int end)
 {
+	printf("start: %d\n", start);
+	printf("end: %d\n", end);
 	for( ;(start < end) && (start < M->size); start++)
 		M->values[start] = randomNumber();
 }
@@ -174,12 +171,13 @@ void blockMult(Matrix *A, Matrix *B, Matrix *C, int start, int end)
 }
 
 void *_th_fillMatrix(void **args) {
-	fillMatrix((Matrix *) args[0], (int) args[1], (int) args[2]);
+	fillMatrix((Matrix *) args[0], *((int *)args[1]), *((int *)args[2]));
+	//fillMatrix((Matrix *) args[0], (int) args[1], (int) args[2]);
 }
 
 void *_th_blockMult(void **args)
 {
-	blockMult((Matrix *) args[0], (Matrix *) args[1], (Matrix *) args[2], (int) args[3], (int) args[4]);
+	blockMult((Matrix *) args[0], (Matrix *) args[1], (Matrix *) args[2], *((int *)args[3]), *((int *)args[3]));
 }
 
 void printMatrix(Matrix *M)
