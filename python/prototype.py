@@ -20,8 +20,8 @@ def cheb(N):
 
 
 # Differentiation matrix
-N = 4; D, x = cheb(N); D2 = np.dot(D, D)   
-print(D)
+N = 2; D, x = cheb(N); D2 = np.dot(D, D)   
+print(D2)
 
 # Remove first and last row for convenience
 D2[0,:] = np.zeros(N+1)
@@ -34,6 +34,7 @@ dt = .01
 v = .53*x + .47*np.sin(-1.5*np.pi*x) # Initial condition
 #v = x + np.cos(np.pi*x)
 #v = np.exp(-x)
+print(D)
 
 # Method's parameters
 tmax = 100; tplot = 2; nplots = round(tmax/tplot)

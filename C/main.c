@@ -6,80 +6,105 @@
 
 int main(int argc, char *argv[])
 {	
-	//Size of matrix
-	unsigned int m;
-	unsigned int o;
-	unsigned int n;
+	/* Variables */
+	unsigned int N; // Grid size
+	unsigned int n_threads; // Number of threads
+	void **th_arguments; // Thread function's arguments
+	int *a, *b; // Block size manipulators
+	double dt, eps; // Equation's parameters
 
-	//Number of threads
-	unsigned int n_threads;
 
-	//Assign values
-	m = atoi(argv[1]);
-	o = atoi(argv[2]);
-	n = atoi(argv[3]);
-	n_threads = atoi(argv[4]);
+	/* Assign values */
+	N = atoi(argv[1]); 
+	n_threads = atoi(argv[2]);
+	Matrix *v = createMatrix(1, N + 1); // Approximation vector
+	Matrix *x = createMatrix(1, N + 1); // Chebyshev x	
+	Matrix *DN = createMatrix(N + 1, N + 1); //Chebyshev Matrix
+	Matrix *D2N = createMatrix(N + 1, N + 1); //Chebyshev Square Matrix 
+	dt = 1e-2; // dt for Euler's method
+	eps = 1e-2; // Equation's epsilon
 
-	void **th_arguments;
-	int *a, *b;
 
-	Matrix *A = createMatrix(m, o);
-	Matrix *B = createMatrix(o, n);
-	Matrix *C = createMatrix(m ,n);
-
-	// Chebyshev x
-	Matrix *x = createMatrix(1, n + 1);
-
-	//Chebyshev Matrix
-	Matrix *Dx = createMatrix(n + 1, n+ 1);
-
-	poolThread *P;
-
-	if(n_threads == 1) /* Sequential */
+	if(n_threads == 1) /* Serial */
 	{
 
-		fillMatrix(A, 0, A->size);
-		fillMatrix(B, 0, B->size);
+		//fillMatrix(A, 0, A->size);
+		//fillMatrix(B, 0, B->size);
 
 		chebX(x, 0, x->size);
+		chebMatrix(DN, x, 0, DN->size);
+		vectorIC(v, x, 0, v->size);
 
-		for(int i=0; i < C->rows; i++)
-			for(int j=0; j < C->cols; j++)
-				C->values[i*C->cols + j] = elementMult(A, B, i, j);
+		/* Matrix multiplication for D2N */
+		for(int i=0; i < D2N->rows; i++)
+			for(int j=0; j < D2N->cols; j++)
+				D2N->values[i*D2N->cols + j] = elementMult(DN, DN, i, j);
+
 	} 
 	else /* Parallel */
 	{
-		unsigned int blockA = A->size%n_threads == 0? A->size/n_threads : A->size/n_threads + 1;
-		unsigned int blockB = B->size%n_threads == 0? B->size/n_threads : B->size/n_threads + 1;
-		unsigned int blockC = C->size%n_threads == 0? C->size/n_threads : C->size/n_threads + 1;
+		/* Pool thread creation */
+		poolThread *P = createPool(n_threads);
 
-		unsigned int blockX = x->size%n_threads == 0? x->size/n_threads : x->size/n_threads + 1;
+		/* 
+			Compute blocks for parallel algorithm 
+			Vectors have the same size and matrix too
+		*/
+		unsigned int blockVector = x->size%n_threads == 0? x->size/n_threads : x->size/n_threads + 1;
+		unsigned int blockMatrix = DN->size%n_threads == 0? DN->size/n_threads : DN->size/n_threads + 1;
 
-		P = createPool(n_threads);
+		//printf("%d %d\n", blockVector, blockMatrix);
+		//exit(0);
+
+		// Fill x vector
+		for(int i=0; i < n_threads; i++) 
+		{
+			
+			th_arguments = (void **) malloc(sizeof(void *) * 3);
+			a = (int *) malloc(sizeof(int));
+			b = (int *) malloc(sizeof(int));
+			*a = i*blockVector;
+			*b = (i+1)*blockVector;
+			th_arguments[0] = (void *) x;
+			th_arguments[1] = (void *) a;
+			th_arguments[2] = (void *) b;
+
+			poolSendJob(P, *_th_chebX, th_arguments);
+		}
+
+		poolWait(P);
+
+		// Fill v vector
 
 		for(int i=0; i < n_threads; i++) 
 		{
+			th_arguments = (void **) malloc(sizeof(void *) * 4);
+			a = (int *) malloc(sizeof(int));
+			b = (int *) malloc(sizeof(int));
+			*a = i*blockVector;
+			*b = (i+1)*blockVector;
+			th_arguments[0] = (void *) v;
+			th_arguments[1] = (void *) x;
+			th_arguments[2] = (void *) a;
+			th_arguments[3] = (void *) b;
+
+			poolSendJob(P, *_th_vectorIC, th_arguments);
+		}
+
+		poolWait(P);
 
 			
+			
+			/*
 			// Fill matrix A
 			th_arguments = (void **) malloc(sizeof(void *) * 3);
 			a = (int *) malloc(sizeof(int));
 			b = (int *) malloc(sizeof(int));
 			*a = i*blockA;
 			*b = (i+1)*blockA;
-			th_arguments = (void **) malloc(sizeof(void *) * 3);
 			th_arguments[0] = (void *) A;
 			th_arguments[1] = (void *) a;
 			th_arguments[2] = (void *) b;
-
-
-			/*
-			th_arguments[0] = (void *)A;
-			th_arguments[1] = (void *) malloc(sizeof(int));
-			th_arguments[2] = (void *) malloc(sizeof(int));
-			memset(th_arguments[1], i*blockA, 1);
-			memset(th_arguments[2], (i+1)*blockA, 1);
-			*/
 
 
 			poolSendJob(P, *_th_fillMatrix, th_arguments);
@@ -95,25 +120,14 @@ int main(int argc, char *argv[])
 			th_arguments[2] = (void *) b;
 
 			poolSendJob(P, *_th_fillMatrix, th_arguments);
-
-			
-			/*
-			// Fill x
-			a = (int *) malloc(sizeof(int));
-			b = (int *) malloc(sizeof(int));
-			*a = i*blockX;
-			*b = (i+1)*blockX;
-			th_arguments = (void **) malloc(sizeof(void *) * 3);
-			th_arguments[0] = (void *) x;
-			th_arguments[1] = (void *) a;
-			th_arguments[2] = (void *) b;
-
-			poolSendJob(P, *_th_chebX, th_arguments);
 			*/
 
-		}
-		poolWait(P);
+			
 
+		//}
+		
+
+		/*
 		for(int i=0; i < n_threads; i++) 
 		{
 			a = (int *) malloc(sizeof(int));
@@ -131,6 +145,7 @@ int main(int argc, char *argv[])
 		}
 
 		poolWait(P);
+		*/
 	}
 
 	// Show result
@@ -144,12 +159,20 @@ int main(int argc, char *argv[])
 	printMatrix(C, stdout);
 	*/
 	
-	//printMatrix(x);
+	printf("x:\n");
+	printMatrix(x, stdout);
+	printf("v:\n");
+	printMatrix(v, stdout);
+	printf("DN:\n");
+	printMatrix(DN, stdout);
+	printf("DN2:\n");
+	printMatrix(D2N, stdout);
 
 	// Liberar memoria 
-	delMatrix(A);
-	delMatrix(B);
-	delMatrix(C);
+	delMatrix(x);
+	delMatrix(v);
+	delMatrix(DN);
+	delMatrix(D2N);
 
 	return 0;
 }
@@ -171,18 +194,15 @@ void delMatrix(Matrix *M)
 
 void fillMatrix(Matrix *M, int start, int end)
 {
-	//printf("start: %d\n", start);
-	//printf("end: %d\n", end);
 	for( ;(start < end) && (start < M->size); start++)
 		M->values[start] = randomNumber();
 }
 
 double elementMult(Matrix *A, Matrix *B, int row, int col)
 {
-	int i, j;
 	double c = 0;
 
-	for(i=0; i < A->cols; i++)
+	for(int i=0; i < A->cols; i++)
 		c += A->values[A->cols*row + i] * B->values[B->cols*i + col];
 
 	return c;
@@ -211,10 +231,48 @@ void *_th_blockMult(void **args)
 	free(args);
 }
 
+
+double initialCondition(double x)
+{
+	return .53*x + .47*sin(-1.5*M_PI*x); 
+}
+
+
+void vectorIC(Matrix *v, Matrix *x, unsigned int start, unsigned int end)
+{
+	for( ;(start < end) && (start < v->size); start++)
+		v->values[start] = initialCondition(x->values[start]);
+}
+
 void chebX(Matrix *x, unsigned int start, unsigned int end) 
 {
 	for( ;(start < end) && (start < x->size); start++)
 		x->values[start] = cos(M_PI*start/(x->size-1));
+}
+
+void chebMatrix(Matrix *DN, Matrix *x, unsigned int start, unsigned int end)
+{
+	for( ;(start < end) && (start < DN->size); start++){
+		if (start == 0)
+			DN->values[start] = (double) (2*(DN->cols-1)*(DN->cols-1)+ 1)/6;
+		else if (start == (DN->size - 1))
+			DN->values[start] = (double) -1*(2*(DN->cols-1)*(DN->cols-1)+ 1)/6;
+		else
+		{
+			if (start % (DN->cols+1) == 0)
+				DN->values[start] = -x->values[start/x->cols]/(2.0 * (1.0 - x->values[start/x->cols] * x->values[start/x->cols]));					
+			else
+			{
+				int i, j;
+				double ci, cj;
+				i = start/DN->cols;
+				j = start%DN->rows;
+				ci = i == 0 || i == (DN->cols - 1) ? 2 : 1;
+				cj = j == 0 || j == (DN->rows - 1) ? 2 : 1;
+				DN->values[start] = (ci * pow(-1.0, (double) i + j))/(cj * (x->values[i] - x->values[j]));
+			}
+		}
+	}
 }
 
 void *_th_chebX(void **args)
@@ -225,13 +283,13 @@ void *_th_chebX(void **args)
 	free(args);
 }
 
-/*void chebMatrix(Matrix *Dx, , unsigned int start, unsigned int end)
+void *_th_vectorIC(void **args)
 {
-	for( ;(start < end) && (start < x->size); start++){
-		if (start == 0 && )
-		x->values[start] = cos(M_PI*start/(x->size-1));
-	}
-}*/
+	vectorIC((Matrix *) args[0], (Matrix *) args[1], *((int *)args[2]), *((int *)args[3]));
+	free(args[2]);
+	free(args[3]);
+	free(args);
+}
 
 void printMatrix(Matrix *M, FILE *f)
 {

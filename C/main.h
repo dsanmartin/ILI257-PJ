@@ -1,6 +1,8 @@
 #define N_MIN 0
 #define N_MAX 1
 
+//#define M_PI acos(-1.0)
+
 struct _matrix
 {
 	unsigned int rows, cols, size;
@@ -17,7 +19,14 @@ void printMatrix(Matrix *M, FILE *f);
 double elementMult(Matrix *A, Matrix *B, int row, int col);
 void fillMatrix(Matrix *M, int start, int end);
 void chebX(Matrix *x, unsigned int start, unsigned int end); 
+void chebMatrix(Matrix *DN, Matrix *x, unsigned int start, unsigned int end);
 void *matMult(void *param);
 void *_th_fillMatrix(void **args);
 void *_th_blockMult(void **args);
 void *_th_chebX(void **args);
+void *_th_vectorIC(void **args);
+
+//void vectorFunction(Matrix *vector, Matrix *x, void (*f)(double), unsigned int start, unsigned int end);
+double initialCondition(double x);
+
+void vectorIC(Matrix *v, Matrix *x, unsigned int start, unsigned int end);

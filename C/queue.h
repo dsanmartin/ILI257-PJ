@@ -3,7 +3,7 @@
 
 struct _job
 {
-	void (*func)(void* args);
+	void (*func)(void *args);
 	void *args;
 	struct _job *next;
 } typedef job;
