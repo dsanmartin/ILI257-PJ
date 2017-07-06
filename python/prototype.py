@@ -20,7 +20,7 @@ def cheb(N):
 
 
 # Differentiation matrix
-N = 20; D, x = cheb(N); D2 = np.dot(D, D)   
+N = 3; D, x = cheb(N); D2 = np.dot(D, D)   
 
 # Remove first and last row for convenience
 D2[0,:] = np.zeros(N+1)
@@ -49,6 +49,9 @@ t = np.zeros(nplots+1)
 u[0] = v#v
 tt = 0
 
+print(nplots)
+print(plotgap)
+
 # Solving PDE using Euler's Method
 for i in range(nplots):
     for n in range(plotgap):
@@ -61,6 +64,8 @@ for i in range(nplots):
         #v = v + dt*(eps*np.dot(D2, v) + v - v**3)
         
         v = v + dt*(eps*np.dot(D2, v) + v - v**3)
+        print(np.dot(D2, v))
+        #print(v)
         
         
         

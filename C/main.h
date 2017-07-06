@@ -25,6 +25,9 @@ void *_th_chebX(void **args);
 void *_th_vectorIC(void **args);
 void *_th_chebMatrix(void **args);
 
+double elementMultCol(Matrix *A, Matrix *B, int row, int col);
+void blockMultCol(Matrix *A, Matrix *B, Matrix *C, int start, int end);
+
 //void vectorFunction(Matrix *vector, Matrix *x, void (*f)(double), unsigned int start, unsigned int end);
 double initialCondition(double x);
 

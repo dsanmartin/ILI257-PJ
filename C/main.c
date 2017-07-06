@@ -31,9 +31,12 @@ int main(int argc, char *argv[])
 	plotgap = (int) round(tplot/DT);
 	Matrix *U = createMatrix(nplots + 1, N + 1); // Matrix with approximation
 	Matrix *t = createMatrix(1, nplots + 1); // t axis vector
-	Matrix *tv = createMatrix(1, N + 1); // Temporal approximation
-	Matrix *Au = createMatrix(1, N + 1); // Temporal matrix dot vector D2N.v 
+	Matrix *tv = createMatrix(N + 1, 1);//createMatrix(1, N + 1); // Temporal approximation
+	Matrix *Au = createMatrix(N + 1, 1);//createMatrix(1, N + 1); // Temporal matrix dot vector D2N.v 
 	tt = 0.0; // Temporal time for euler method 
+
+	//printf("%d\n", plotgap);
+	//printf("%d\n", nplots);
 
 	if(n_threads == 1) /* Serial */
 	{
@@ -61,18 +64,26 @@ int main(int argc, char *argv[])
 			for (int j=0; j < plotgap; j++) 
 			{
 				tt += DT;
-				//memcpy(tv, v, sizeof(int)*(N+1));
+
 				for (int w=0; w < v->cols; w++)
 					tv->values[w] = v->values[w];
 
-				/* Matrix multiplication for Au */
-				//for(int r=0; r < Au->rows; r++)
-				//	for(int s=0; s < Au->cols; s++)
-				//		Au->values[r*Au->cols + s] = elementMult(D2N, tv, r, s);
+				//blockMult(D2N, tv, Au, 0, Au->size);
+				blockMultCol(D2N, tv, Au, 0, Au->size);
+				
+				/*
+				for(int i=0; i < Au->rows; i++)
+					for(int j=0; j < Au->cols; j++)
+						Au->values[i*Au->cols + j] = elementMult(D2N, tv, i, j);
+				
+				
+				printf("tv:\n");
+				printMatrix(tv, stdout);
+				*/
 
-				blockMult(D2N, tv, Au, 0, Au->size);
-
-				//printMatrix(Au, stdout);
+				printf("Au:\n");
+				printMatrix(Au, stdout);
+				
 
 				vectorPDE(tv, Au, 0, tv->size);
 
@@ -265,6 +276,23 @@ void *_th_blockMult(void **args)
 	free(args[4]);
 	free(args);
 }
+
+double elementMultCol(Matrix *A, Matrix *B, int row, int col)
+{
+	double c = 0;
+
+	for(int i=0; i < A->cols; i++)
+		c += A->values[A->cols*row + i] * B->values[i];
+
+	return c;
+}
+
+void blockMultCol(Matrix *A, Matrix *B, Matrix *C, int start, int end)
+{
+	for( ;(start < end) && (start < C->size); start++)
+		C->values[start] = elementMultCol(A, B, start%B->rows, start/B->rows);
+}
+
 
 
 double initialCondition(double x)
