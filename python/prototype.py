@@ -20,8 +20,7 @@ def cheb(N):
 
 
 # Differentiation matrix
-N = 2; D, x = cheb(N); D2 = np.dot(D, D)   
-print(D2)
+N = 20; D, x = cheb(N); D2 = np.dot(D, D)   
 
 # Remove first and last row for convenience
 D2[0,:] = np.zeros(N+1)
@@ -34,7 +33,6 @@ dt = .01
 v = .53*x + .47*np.sin(-1.5*np.pi*x) # Initial condition
 #v = x + np.cos(np.pi*x)
 #v = np.exp(-x)
-print(D)
 
 # Method's parameters
 tmax = 100; tplot = 2; nplots = round(tmax/tplot)
@@ -61,6 +59,7 @@ for i in range(nplots):
         # Since for convenience the first and last row is removed from the differentiation matrix, the borders
         # values (-1 and 1) are kept in all the times
         #v = v + dt*(eps*np.dot(D2, v) + v - v**3)
+        
         v = v + dt*(eps*np.dot(D2, v) + v - v**3)
         
         
@@ -79,6 +78,7 @@ for i in range(nplots):
     u[i+1] = vv
     t[i+1] = tt
     
+#print(x)
 # Plot
 fig = plt.figure(figsize=(12,6))
 ax = fig.gca(projection='3d')
