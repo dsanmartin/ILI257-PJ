@@ -64,7 +64,7 @@ for i in range(nplots):
         #v = v + dt*(eps*np.dot(D2, v) + v - v**3)
         
         v = v + dt*(eps*np.dot(D2, v) + v - v**3)
-        print(np.dot(D2, v))
+        #print(np.dot(D2, v))
         #print(v)
         
         
