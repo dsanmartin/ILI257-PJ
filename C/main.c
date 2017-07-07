@@ -13,7 +13,7 @@ int main(int argc, char *argv[])
 	void **th_arguments; // Thread function's arguments
 	int *a, *b; // Block size manipulators
 	double tt; // Equation's parameters dt, eps,
-	unsigned int tmax, tplot, nplots, plotgap;
+	unsigned int nplots, plotgap; //tmax, tplot,
 
 	/* Assign values */
 	N = atoi(argv[1]); 
@@ -22,37 +22,35 @@ int main(int argc, char *argv[])
 	Matrix *x = createMatrix(1, N + 1); // Chebyshev x	
 	Matrix *DN = createMatrix(N + 1, N + 1); //Chebyshev Matrix
 	Matrix *D2N = createMatrix(N + 1, N + 1); //Chebyshev Square Matrix 
-	tmax = 100; // Max time for t axis
-	tplot = 2; // Plot size
-	nplots = (int) round(tmax/tplot);
-	plotgap = (int) round(tplot/DT);
+	nplots = (int) round(T_MAX/T_PLOT);
+	plotgap = (int) round(T_PLOT/DT);
 	Matrix *U = createMatrix(nplots + 1, N + 1); // Matrix with approximation
 	Matrix *t = createMatrix(1, nplots + 1); // t axis vector
-	//Matrix *tv = createMatrix(N + 1, 1); // Temporal approximation
 	Matrix *Au = createMatrix(N + 1, 1);//createMatrix(1, N + 1); // Temporal matrix dot vector D2N.v 
 	tt = 0.0; // Temporal time for euler method 
 
 	if(n_threads == 1) /* Serial */
 	{
-		chebX(x, 0, x->size);
-		chebMatrix(DN, x, 0, DN->size);
-		vectorIC(v, x, 0, v->size);
+		chebX(x, 0, x->size); // Create chebyshev x
+		chebMatrix(DN, x, 0, DN->size); // Create Chebyshev matrix
+		vectorIC(v, x, 0, v->size); // Initial condition vector
+		blockMult(DN, DN, D2N, 0, D2N->size); // Create DN^2 matrix
 
-		t->values[0] = tt;
+		t->values[0] = tt; // Initial time
 
 		// Copy initial condition into approximation matrix
 		for (int w=0; w < v->rows; w++)
 			U->values[w] = v->values[w];
 
-		// Create DN^2 matrix
-		blockMult(DN, DN, D2N, 0, D2N->size);
-
 		// Remove first and last rows to force border conditions
+		/*
 		for(int w=0; w < D2N->cols; w++)
 		{
 			D2N->values[w] = 0.0;
 			D2N->values[D2N->cols*N + w] = 0.0;
 		}
+		*/		
+		setZeroRows(D2N, 0, D2N->cols);		
 
 		/* Euler method */
 		for (int i=1; i <= nplots; i++) 
@@ -60,21 +58,7 @@ int main(int argc, char *argv[])
 			for (int j=0; j < plotgap; j++) 
 			{
 				tt += DT;
-				/*
-				// Temporal vector of approximation
-				for (int w=0; w < v->cols; w++)
-					tv->values[w] = v->values[w];
 
-				// DN^2 dot tv
-				blockMultCol(D2N, tv, Au, 0, Au->size);
-
-				// Evaluation discretize equation
-				vectorPDE(tv, Au, 0, tv->size);
-
-				// Update 
-				for (int w=0; w < v->cols; w++)
-					v->values[w] = tv->values[w];
-				*/
 				// DN^2 dot tv
 				blockMultCol(D2N, v, Au, 0, Au->size);
 
@@ -103,7 +87,8 @@ int main(int argc, char *argv[])
 		unsigned int blockMatrix = DN->size%n_threads == 0? DN->size/n_threads : DN->size/n_threads + 1;
 
 
-		/* Fill x vector */
+
+		// Fill x vector 
 		for(int i=0; i < n_threads; i++) 
 		{
 			
@@ -121,7 +106,7 @@ int main(int argc, char *argv[])
 
 		poolWait(P);
 
-		/* Fill v vector */
+		// Fill v vector 
 		for(int i=0; i < n_threads; i++) 
 		{
 			th_arguments = (void **) malloc(sizeof(void *) * 4);
@@ -139,7 +124,7 @@ int main(int argc, char *argv[])
 
 		poolWait(P);
 		
-		/* Create Chebyshev matrix */
+		// Create Chebyshev matrix 
 		for(int i=0; i < n_threads; i++) 
 		{
 			th_arguments = (void **) malloc(sizeof(void *) * 4);
@@ -157,7 +142,7 @@ int main(int argc, char *argv[])
 
 		poolWait(P);
 
-		/* Create D2N matrix, D2.D2 */
+		// Create DN^2 matrix
 		for(int i=0; i < n_threads; i++) 
 		{
 			a = (int *) malloc(sizeof(int));
@@ -176,18 +161,45 @@ int main(int argc, char *argv[])
 
 		poolWait(P);
 
-		t->values[0] = tt;
-
+		
 		// Copy initial condition into approximation matrix
 		for (int w=0; w < v->rows; w++)
 			U->values[w] = v->values[w];
 
 		// Remove first and last rows to force border conditions
-		for(int w=0; w < D2N->cols; w++)
+		for(int i=0; i < n_threads; i++) 
 		{
-			D2N->values[w] = 0.0;
-			D2N->values[D2N->cols*N + w] = 0.0;
+			a = (int *) malloc(sizeof(int));
+			b = (int *) malloc(sizeof(int));
+			*a = i*blockVector;
+			*b = (i+1)*blockVector;
+			th_arguments = (void **) malloc(sizeof(void *) * 3);
+			th_arguments[0] = (void *) D2N;
+			th_arguments[1] = (void *) a;
+			th_arguments[2] = (void *) b;
+
+			poolSendJob(P, *_th_setZeroRows, th_arguments);
 		}
+
+		poolWait(P);
+
+		/* serial */
+		/*
+		chebX(x, 0, x->size);
+		chebMatrix(DN, x, 0, DN->size);
+		vectorIC(v, x, 0, v->size);
+
+		// Create DN^2 matrix
+		blockMult(DN, DN, D2N, 0, D2N->size);
+
+		setZeroRows(D2N, 0, D2N->cols);	
+		*/
+
+		t->values[0] = tt;
+
+		// Copy initial condition into approximation matrix
+		for (int w=0; w < v->rows; w++)
+			U->values[w] = v->values[w];
 
 		/* Euler method */
 		for (int i=1; i <= nplots; i++) 
@@ -196,9 +208,18 @@ int main(int argc, char *argv[])
 			{
 				tt += DT;
 
-				// DN^2 dot tv
+				/* Serial */
+
+				// DN^2 dot v
 				blockMultCol(D2N, v, Au, 0, Au->size);
-				/* 
+				// Evaluation discretize equation
+				vectorPDE(v, Au, 0, v->size);
+
+
+				/* Parallel  */
+
+				// DN^2 dot v
+				/*
 				for(int i=0; i < n_threads; i++) 
 				{
 					a = (int *) malloc(sizeof(int));
@@ -206,7 +227,7 @@ int main(int argc, char *argv[])
 					*a = i*blockMatrix;
 					*b = (i+1)*blockMatrix;
 					th_arguments = (void **) malloc(sizeof(void *) * 5);
-					th_arguments[0] = (void *) DN;
+					th_arguments[0] = (void *) D2N;
 					th_arguments[1] = (void *) v;
 					th_arguments[2] = (void *) Au;
 					th_arguments[3] = (void *) a;
@@ -216,18 +237,15 @@ int main(int argc, char *argv[])
 				}
 
 				poolWait(P);
-				 D2.D2 */
 
 				// Evaluation discretize equation
-				vectorPDE(v, Au, 0, v->size);
-				/*
 				for(int i=0; i < n_threads; i++) 
 				{
-					th_arguments = (void **) malloc(sizeof(void *) * 4);
 					a = (int *) malloc(sizeof(int));
 					b = (int *) malloc(sizeof(int));
 					*a = i*blockVector;
 					*b = (i+1)*blockVector;
+					th_arguments = (void **) malloc(sizeof(void *) * 4);
 					th_arguments[0] = (void *) v;
 					th_arguments[1] = (void *) Au;
 					th_arguments[2] = (void *) a;
@@ -236,8 +254,9 @@ int main(int argc, char *argv[])
 					poolSendJob(P, *_th_vectorPDE, th_arguments);
 				}
 
-				poolWait(P);	
-				*/			
+				poolWait(P);
+				*/
+
 
 			}
 
@@ -246,6 +265,8 @@ int main(int argc, char *argv[])
 
 			t->values[i] = tt;
 		}
+
+		deletePool(P);
 		
 	}
 
@@ -403,6 +424,16 @@ void vectorPDE(Matrix *v, Matrix *Au, unsigned int start, unsigned int end)
 		v->values[start] = PDE(v->values[start], Au->values[start]);
 }
 
+void setZeroRows(Matrix *U, unsigned int start, unsigned int end)
+{
+	for( ;(start < end) && (start < U->cols); start++)
+	{
+		U->values[start] = 0.0; // First row
+		U->values[U->rows*(U->cols-1) + start] = 0.0; // Last row
+	}
+}
+
+
 /* Functions for thread pool */
 
 // Block matrix-matrix multiplication
@@ -417,7 +448,7 @@ void *_th_blockMult(void **args)
 // Block matrix-vector multiplication
 void *_th_blockMultCol(void **args)
 {
-	blockMult((Matrix *) args[0], (Matrix *) args[1], (Matrix *) args[2], *((int *)args[3]), *((int *)args[4]));
+	blockMultCol((Matrix *) args[0], (Matrix *) args[1], (Matrix *) args[2], *((int *)args[3]), *((int *)args[4]));
 	free(args[3]);
 	free(args[4]);
 	free(args);
@@ -456,6 +487,14 @@ void *_th_vectorPDE(void **args)
 	vectorPDE((Matrix *) args[0], (Matrix *) args[1], *((int *)args[2]), *((int *)args[3]));
 	free(args[2]);
 	free(args[3]);
+	free(args);
+}
+
+void *_th_setZeroRows(void **args)
+{
+	setZeroRows((Matrix *) args[0], *((int *)args[1]), *((int *)args[2]));
+	free(args[1]);
+	free(args[2]);
 	free(args);
 }
 

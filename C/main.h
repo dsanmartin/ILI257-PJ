@@ -1,5 +1,7 @@
 #define DT 1E-2 // dt for Euler's method
 #define EPS 1E-2 // Equation's epsilon
+#define T_MAX 100 // Max time for t axis
+#define T_PLOT 2 // Plot size
 
 struct _matrix
 {
@@ -19,10 +21,12 @@ double initialCondition(double x);
 void vectorIC(Matrix *v, Matrix *x, unsigned int start, unsigned int end);
 double PDE(double v, double Au);
 void vectorPDE(Matrix *v, Matrix *Au, unsigned int start, unsigned int end);
+void setZeroRows(Matrix *U, unsigned int start, unsigned int end);
 void *_th_blockMult(void **args);
 void *_th_blockMultCol(void **args);
 void *_th_chebX(void **args);
 void *_th_chebMatrix(void **args);
 void *_th_vectorIC(void **args);
 void *_th_vectorPDE(void **args);
+void *_th_setZeroRows(void **args);
 void printMatrix(Matrix *M, FILE *f);
