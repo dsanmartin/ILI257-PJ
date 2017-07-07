@@ -20,7 +20,7 @@ def cheb(N):
 
 
 # Differentiation matrix
-N = 3; D, x = cheb(N); D2 = np.dot(D, D)   
+N = 20; D, x = cheb(N); D2 = np.dot(D, D)   
 
 # Remove first and last row for convenience
 D2[0,:] = np.zeros(N+1)
@@ -29,10 +29,13 @@ D2[-1,:] = np.zeros(N+1)
 # Initial values
 eps = 1e-2#0.001
 #dt = min([.01, 50*N**(-4)/eps])
-dt = .01
+#dt = .01
+dt = 1e-2
 v = .53*x + .47*np.sin(-1.5*np.pi*x) # Initial condition
-#v = x + np.cos(np.pi*x)
+#v = np.sin(-1.5*np.pi*x) 
+#v = .3*x + .7*np.cos(np.pi*x)
 #v = np.exp(-x)
+plt.plot(x, v)
 
 # Method's parameters
 tmax = 100; tplot = 2; nplots = round(tmax/tplot)
@@ -60,20 +63,11 @@ for i in range(nplots):
         # The approximation of second derivative using chebyshev matrix 
         # For border's conditions is used the values of border values of the initial condition 
         # Since for convenience the first and last row is removed from the differentiation matrix, the borders
-        # values (-1 and 1) are kept in all the times
-        #v = v + dt*(eps*np.dot(D2, v) + v - v**3)
-        
+        # values (-1 and 1) are kept in all the times        
         v = v + dt*(eps*np.dot(D2, v) + v - v**3)
         #print(np.dot(D2, v))
         #print(v)
         
-        
-        
-#        k1 = np.dot(D2, v) #+ v 
-#        k2 = np.dot(D2, v + 0.5*k1*dt) #+ (v+0.5*k1*dt)
-#        k3 = np.dot(D2, v + 0.5*k2*dt) #+ (v+0.5*k2*dt)
-#        k4 = np.dot(D2, v + k3*dt) #+ (v+k3*dt)
-#        v = v + (dt/6)*(k1 + 2*(k2 + k3) + k4)
     
     # Interpolation
     #vv = np.polyval(np.polyfit(x,v,N), xx)
