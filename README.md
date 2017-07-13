@@ -3,4 +3,4 @@
 ### Profesor: Dr. Xavier Bonnaire
 ------
 
-En este proyecto se implementa el uso de *Threadpool* para acelerar la ejecución de un algoritmo para resolver una EDP parabólica, basándose en métodos espectrales y algoritmos iterativos clásicos.
+En este proyecto se implementa el uso de *Threadpool* para acelerar la ejecución de un algoritmo de resolución de EDPs parabólicas, basándose en métodos espectrales y algoritmos iterativos clásicos.
