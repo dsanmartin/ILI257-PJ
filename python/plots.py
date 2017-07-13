@@ -45,17 +45,16 @@ def plotTT(df1, df2, df3, df4):
 
 def plotSpeedup(df1, df2, df3, df4):
     fig, ax = plt.subplots()
-    plt.title("Speedup vs Threads")
-    n_threads = np.arange(1, 5)
+    plt.title("Speedup vs N")
 
-    plt.plot(n_threads, df1["time_real"]/df2["time_real"], "b-*", label="SUP 2 threads")
-    plt.plot(n_threads, df1["time_real"]/df3["time_real"], "r-d", label="SUP 3 threads")
-    plt.plot(n_threads, df1["time_real"]/df4["time_real"], "g-o", label="SUP 4 threads")
+    plt.plot(df1["n"], df1["time_real"]/df2["time_real"], "b-*", label="SUP 2 threads")
+    plt.plot(df1["n"], df1["time_real"]/df3["time_real"], "r-d", label="SUP 3 threads")
+    plt.plot(df1["n"], df1["time_real"]/df4["time_real"], "g-o", label="SUP 4 threads")
     
-    ax.set_xticks(n_threads)
+    ax.set_xticks(df1["n"])
     plt.grid(True)
     plt.legend()
-    plt.xlabel("Threads")
+    plt.xlabel("N")
     plt.ylabel("Speedup")
     plt.show()
     return None
@@ -80,16 +79,16 @@ df1 = pd.read_csv(csv_file1)
 df2 = pd.read_csv(csv_file2)
 df3 = pd.read_csv(csv_file3)
 df4 = pd.read_csv(csv_file4)
-plotTN(df1, df2, df3, df4)
-plotTT(df1, df2, df3, df4)
-plotSpeedup(df1, df2, df3, df4)
+#plotTN(df1, df2, df3, df4)
+#plotTT(df1, df2, df3, df4)
+#plotSpeedup(df1, df2, df3, df4)
 
-#csv_x = "../C/CSV/x.csv"
-#csv_t = "../C/CSV/t.csv"
-#csv_u = "../C/CSV/U.csv"
-#
-#x = np.genfromtxt(csv_x, delimiter=',')
-#t = np.genfromtxt(csv_t, delimiter=',')
-#u = np.genfromtxt(csv_u, delimiter=',')
-#
-#plot3D(x, t, u)
+csv_x = "../C/CSV/x.csv"
+csv_t = "../C/CSV/t.csv"
+csv_u = "../C/CSV/U.csv"
+
+x = np.genfromtxt(csv_x, delimiter=',')
+t = np.genfromtxt(csv_t, delimiter=',')
+u = np.genfromtxt(csv_u, delimiter=',')
+
+plot3D(x, t, u)

@@ -3,9 +3,9 @@
 
 
 /* New Queue */
-queue *newQueue()
+Queue *newQueue()
 {
-  queue *new = (queue*) malloc(sizeof(queue));
+  Queue *new = (Queue*) malloc(sizeof(Queue));
   new->first = NULL;
   new->last  = NULL;
   new->size  = 0;
@@ -13,37 +13,33 @@ queue *newQueue()
 }
 
 /* Add job to queue */
-void addToQueue(queue *some_queue, void *new)
+void addToQueue(Queue *queue, void *task)
 {
-  /*
-  job *new = (job*) malloc(sizeof(job));
-  new->func = task->func;
-  new->args = task->args;
-  new->next  = NULL;
-  */
-  if (some_queue->first == NULL) {
-    some_queue->first = new;
-    some_queue->last  = new;
-  } else {
-    (*some_queue->last).next = new;
-    some_queue->last = new;
+  if (queue->first == NULL) {
+    queue->first = task;
+    queue->last  = task;
+  } 
+  else 
+  {
+    (*queue->last).next = task;
+    queue->last = task;
   }
-  some_queue->size++;
+  queue->size++;
 }
 
 /* Extract element from queue */
-void *extractToQueue(queue *some_queue)
+void *extractToQueue(Queue *queue)
 {
-  job *tmp = some_queue->first;
-  if (some_queue->last == tmp)
-    some_queue->last = NULL;
-  some_queue->first = tmp->next;
-  some_queue->size--;
+  Job *tmp = queue->first;
+  if (queue->last == tmp)
+    queue->last = NULL;
+  queue->first = tmp->next;
+  queue->size--;
   return tmp;
 }
 
 /* Delete a job from queue */
-void delToQueue(queue *some_queue)
+void delToQueue(Queue *queue)
 {
   /* TODO
   job *act, *next;

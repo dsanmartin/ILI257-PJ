@@ -3,48 +3,41 @@
 
 #define TRUE 1
 
-poolThread *createPool(unsigned int n_threads) 
+/* New Thread Pool */
+PoolThread *createPool(unsigned int n_threads) 
 {
-	poolThread *pt = (poolThread*) malloc(sizeof(poolThread));
+	PoolThread *pt = (PoolThread*) malloc(sizeof(PoolThread));
 	pt->threads = (pthread_t*) malloc(sizeof(pthread_t)*n_threads);
-	
-	/*
-	pt->queue_threads = (queue*) malloc(sizeof(queue));
-	pt->queue_threads->first = NULL;
-	pt->queue_threads->last = NULL;
-	*/
-
-	pt->queue_threads = newQueue();
+	pt->threads_queue = newQueue();
 	pt->pool_size = n_threads;
 	pt->n_working = 0;
-
-	pt->queue_mutex = (sem_t*) malloc(sizeof(sem_t));
-	pt->st = (sem_t*) malloc(sizeof(sem_t));
-	pt->cmutex = (pthread_mutex_t*) malloc(sizeof(pthread_mutex_t)); // Working's counter mutex
-	pt->idle = (pthread_cond_t*) malloc(sizeof(pthread_cond_t));
+	pt->queue_mutex = (sem_t*) malloc(sizeof(sem_t)); // Queue's mutex
+	pt->job_sem = (sem_t*) malloc(sizeof(sem_t)); // Job's control semaphore
+	pt->w_mutex = (pthread_mutex_t*) malloc(sizeof(pthread_mutex_t)); // Working's counter mutex
+	pt->idle = (pthread_cond_t*) malloc(sizeof(pthread_cond_t)); // Control working pool
 
 	sem_init(pt->queue_mutex,0,1);
-	sem_init(pt->st,0,0);
-	pthread_mutex_init(pt->cmutex, NULL);
+	sem_init(pt->job_sem,0,0);
+	pthread_mutex_init(pt->w_mutex, NULL);
 	pthread_cond_init(pt->idle, NULL);
 
+	/* Thread's creation */
 	for(int i=0; i < n_threads; i++) 
 		pthread_create(&(pt->threads[i]), NULL, _worker, pt);
 
 	return pt;
 }
 
-void deletePool(poolThread *pt)
+void deletePool(PoolThread *pt)
 {
-	// Deberia borrar los threads tambien
-	job *t, *tt;
-	for(t = pt->queue_threads->first; t!= NULL; t=tt)
+	Job *t, *tt;
+	for(t = pt->threads_queue->first; t!= NULL; t=tt)
 	{
 		tt = t->next;
 		free(t);
 	}
 	
-	free(pt->queue_threads);
+	free(pt->threads_queue);
 	free(pt->threads);
 	free(pt);
 }
@@ -52,50 +45,50 @@ void deletePool(poolThread *pt)
 void *_worker(void *vp)
 {
 	int tmp;
-	poolThread *pt = (poolThread*) vp;
-  	job *my_job;
+	PoolThread *pt = (PoolThread*) vp;
+  	Job *job;
 	while (TRUE) {
-	sem_wait(pt->queue_mutex);
-	if (pt->queue_threads->size != 0) 
-	{
-		pthread_mutex_lock(pt->cmutex);
-		pt->n_working++;
-	  	pthread_mutex_unlock(pt->cmutex);
-	  	my_job = (job*) extractToQueue(pt->queue_threads);
-	  	sem_post(pt->queue_mutex);
-	  	my_job->func(my_job->args);
-	  	free(my_job);
-	  	pthread_mutex_lock(pt->cmutex);
-	  	pt->n_working--;
-	  	if (!pt->n_working)
-	    	pthread_cond_signal(pt->idle);
-	  	pthread_mutex_unlock(pt->cmutex);
+		sem_wait(pt->queue_mutex);
+		if (pt->threads_queue->size != 0) 
+		{
+			pthread_mutex_lock(pt->w_mutex);
+			pt->n_working++;
+		  	pthread_mutex_unlock(pt->w_mutex);
+		  	job = (Job*) extractToQueue(pt->threads_queue);
+		  	sem_post(pt->queue_mutex);
+		  	job->func(job->args);
+		  	free(job);
+		  	pthread_mutex_lock(pt->w_mutex);
+		  	pt->n_working--;
+		  	if (!pt->n_working)
+		    	pthread_cond_signal(pt->idle);
+	  		pthread_mutex_unlock(pt->w_mutex);
 		} 
 		else 
 		{
 	  		sem_post(pt->queue_mutex);
-	  		sem_wait(pt->st);
+	  		sem_wait(pt->job_sem);
 		}
 	}
 }
 
-void poolSendJob(poolThread *pt, void *func, void *args)
+void poolSendJob(PoolThread *pt, void *func, void *args)
 {
-	job *some_job = (job*) malloc(sizeof(job));
-	some_job->func = func;
-	some_job->args = args;
-	some_job->next = NULL;
+	Job *job = (Job*) malloc(sizeof(Job));
+	job->func = func;
+	job->args = args;
+	job->next = NULL;
 	sem_wait(pt->queue_mutex);
-	addToQueue(pt->queue_threads, some_job);
+	addToQueue(pt->threads_queue, job);
 	sem_post(pt->queue_mutex);
-	sem_post(pt->st);
+	sem_post(pt->job_sem);
 }
 
-void poolWait(poolThread *pt) 
+void poolWait(PoolThread *pt) 
 {
-	pthread_mutex_lock(pt->cmutex);
-	while (pt->n_working || pt->queue_threads->size) {
-		pthread_cond_wait(pt->idle, pt->cmutex);
+	pthread_mutex_lock(pt->w_mutex);
+	while (pt->n_working || pt->threads_queue->size) {
+		pthread_cond_wait(pt->idle, pt->w_mutex);
   	}
-  	pthread_mutex_unlock(pt->cmutex);
+  	pthread_mutex_unlock(pt->w_mutex);
 }

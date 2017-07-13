@@ -1,7 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <math.h>
-//#include <string.h>
 #include "main.h"
 #include "threadpool.h"
 
@@ -12,7 +11,7 @@ int main(int argc, char *argv[])
 	unsigned int n_threads; // Number of threads
 	void **th_arguments; // Thread function's arguments
 	int *a, *b; // Block size manipulators
-	double tt; // Equation's parameters dt, eps,
+	double tt; // Euler's method time
 	unsigned int nplots, plotgap; //tmax, tplot,
 
 	/* Assign values */
@@ -22,8 +21,8 @@ int main(int argc, char *argv[])
 	Matrix *x = createMatrix(1, N + 1); // Chebyshev x	
 	Matrix *DN = createMatrix(N + 1, N + 1); //Chebyshev Matrix
 	Matrix *D2N = createMatrix(N + 1, N + 1); //Chebyshev Square Matrix 
-	nplots = (int) round(T_MAX/T_PLOT);
-	plotgap = (int) round(T_PLOT/DT);
+	nplots = (int) round(T_MAX/T_PLOT); // Number of plots
+	plotgap = (int) round(T_PLOT/DT); // Space between plots
 	Matrix *U = createMatrix(nplots + 1, N + 1); // Matrix with approximation
 	Matrix *t = createMatrix(1, nplots + 1); // t axis vector
 	Matrix *Au = createMatrix(N + 1, 1);//createMatrix(1, N + 1); // Temporal matrix dot vector D2N.v 
@@ -42,14 +41,7 @@ int main(int argc, char *argv[])
 		for (int w=0; w < v->rows; w++)
 			U->values[w] = v->values[w];
 
-		// Remove first and last rows to force border conditions
-		/*
-		for(int w=0; w < D2N->cols; w++)
-		{
-			D2N->values[w] = 0.0;
-			D2N->values[D2N->cols*N + w] = 0.0;
-		}
-		*/		
+		// Remove first and last rows to force border conditions	
 		setZeroRows(D2N, 0, D2N->cols);		
 
 		/* Euler method */
@@ -77,7 +69,7 @@ int main(int argc, char *argv[])
 	else /* Parallel */
 	{
 		/* Pool thread creation */
-		poolThread *P = createPool(n_threads);
+		PoolThread *P = createPool(n_threads);
 
 		/* 
 			Compute blocks for parallel algorithm 
@@ -270,25 +262,7 @@ int main(int argc, char *argv[])
 		
 	}
 
-	// Show result
-	/*
-	printf("x:\n");
-	printMatrix(x, stdout);
-	printf("v:\n");
-	printMatrix(v, stdout);
-	printf("DN:\n");
-	printMatrix(DN, stdout);
-	printf("DN2:\n");
-	printMatrix(D2N, stdout);
-	
-	printf("U:\n");
-	printMatrix(U, stdout);
-
-	printf("tv\n");
-	printMatrix(tv, stdout);
-	*/
-
-
+	// Save results
 	FILE *ft = fopen("CSV/t.csv", "w");
 	FILE *fx = fopen("CSV/x.csv", "w");
 	FILE *fu = fopen("CSV/U.csv", "w");
@@ -297,14 +271,13 @@ int main(int argc, char *argv[])
 	printMatrix(U, fu);
 	
 
-	// Liberar memoria 
+	// Free memory
 	delMatrix(x);
 	delMatrix(v);
 	delMatrix(DN);
 	delMatrix(D2N);
 	delMatrix(U);
 	delMatrix(t);
-	//delMatrix(tv);
 	delMatrix(Au);
 
 	return 0;
@@ -312,6 +285,7 @@ int main(int argc, char *argv[])
 
 /* Matrix functions */
 
+// Create matrix
 Matrix *createMatrix(unsigned int rows, unsigned int cols)
 {
 	Matrix *M = (Matrix *) malloc(sizeof(Matrix));
@@ -321,6 +295,7 @@ Matrix *createMatrix(unsigned int rows, unsigned int cols)
 	M->values = (double *) malloc(sizeof(double)*rows*cols);
 }
 
+// Delete matrix
 void delMatrix(Matrix *M)
 {
 	free(M->values);

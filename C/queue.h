@@ -6,18 +6,18 @@ struct _job
 	void (*func)(void *args);
 	void *args;
 	struct _job *next;
-} typedef job;
+} typedef Job;
 
 struct _queue
 {
-	job *first;
-	job *last;
+	Job *first;
+	Job *last;
   	unsigned int size;
-} typedef queue;
+} typedef Queue;
 
-queue *newQueue();
-void addToQueue(queue *some_queue, void *task);
-void *extractToQueue(queue *some_queue);
-void delToQueue(queue *some_queue);
+Queue *newQueue();
+void addToQueue(Queue *queue, void *task);
+void *extractToQueue(Queue *queue);
+void delToQueue(Queue *queue);
 
 #endif
