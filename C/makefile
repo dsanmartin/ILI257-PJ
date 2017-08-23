@@ -1,5 +1,4 @@
-
-FLAGS = -pthread -lm
+FLAGS = -pthread -lm #-Wall -Wextra -O3 -g
 OBJS  = queue.c threadpool.c main.c
 HEAD  = queue.h threadpool.h main.h
 NAME  = main
